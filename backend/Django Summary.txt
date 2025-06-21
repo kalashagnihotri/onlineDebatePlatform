@@ -1,0 +1,68 @@
+﻿✅ Core Features (Required)
+* JWT-based user registration & login
+
+* Student & Moderator roles with permissions
+
+* Debate topic/session management
+
+* Join/leave debates
+
+* Message posting/retrieval
+
+* Moderator tools: mute, remove, warn
+
+* Debate history/transcripts
+
+________________
+
+
+🚀 Extra Features to Stand Out
+Feature
+	Why It Stands Out
+	Real-time Chat (WebSocket)
+	Live debates via Django Channels instead of polling
+	AI Feedback
+	Analyze arguments with basic AI or OpenAI API
+	Role-Based Dashboards
+	Tailored APIs for Students and Moderators
+	Voting System
+	Let users vote on best arguments
+	Leaderboards
+	Show rankings based on wins or activity
+	PDF Transcript Export
+	Download debate history as a document
+	Matchmaking
+	Smartly pair users based on interests/skill
+	Google Calendar Integration
+	Add debate sessions to calendars
+	2FA for Moderators
+	Enhanced login security
+	Reflection & Polling
+	Pre/post-debate interaction tools
+	Notification System
+	Reminders, updates, and moderation alerts
+	________________
+
+
+🛠️ Technical Enhancements
+   * API versioning (/api/v1/)
+
+   * Redis caching for hot topics
+
+   * Rate-limiting to prevent spam
+
+   * Swagger or Spectacular API docs
+
+   * Basic unit/integration tests
+
+   * Clean Git history and commit messages
+
+________________
+
+
+📁 Docs to Include in GitHub
+      * README.md: setup, API examples, screenshots
+
+      * features.md: list bonus features and why they matter
+
+      * Swagger/OpenAPI schema (auto-generated)
