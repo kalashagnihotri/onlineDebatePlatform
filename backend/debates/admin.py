@@ -6,11 +6,11 @@ class DebateTopicAdmin(admin.ModelAdmin):
     search_fields = ('title',)
 
 class DebateSessionAdmin(admin.ModelAdmin):
-    list_display = ('topic', 'start_time', 'end_time', 'status')
-    list_filter = ('status',)
+    list_display = ('topic', 'moderator', 'start_time', 'end_time')
+    list_filter = ('start_time', 'end_time')
 
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('session', 'user', 'content', 'timestamp')
+    list_display = ('session', 'author', 'content', 'timestamp')
     search_fields = ('content',)
 
 admin.site.register(DebateTopic, DebateTopicAdmin)

@@ -30,8 +30,14 @@ const DebateDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [session, setSession] = useState<DebateSession | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const wsUrl = `ws://127.0.0.1:8000/ws/debates/${id}/`;
-  const { messages: wsMessages, sendMessage } = useWebSocket(wsUrl);
+  
+  const sessionId = parseInt(id || '0');
+  const { messages: wsMessages, sendMessage } = useWebSocket({
+    sessionId,
+    onMessage: (message) => {
+      console.log('New message received:', message);
+    }
+  });
 
   useEffect(() => {
     if (id) {
@@ -52,10 +58,18 @@ const DebateDetailPage = () => {
     if (wsMessages.length > 0) {
       setSession(prevSession => {
         if (!prevSession) return null;
-        // You might want to add logic to avoid duplicate messages
+        
+        // Transform WebSocket messages to match Message interface
+        const newMessages: Message[] = wsMessages.map((wsMsg: any, idx: number) => ({
+          id: Date.now() + idx, // Generate a unique ID
+          author: wsMsg.user || { id: 0, username: 'Unknown' },
+          content: wsMsg.message,
+          timestamp: wsMsg.timestamp || new Date().toISOString(),
+        }));
+        
         return {
           ...prevSession,
-          messages: [...prevSession.messages, ...wsMessages]
+          messages: [...prevSession.messages, ...newMessages]
         };
       });
     }
@@ -63,7 +77,7 @@ const DebateDetailPage = () => {
 
   const handlePostMessage = () => {
     if (newMessage.trim()) {
-      sendMessage({ message: newMessage });
+      sendMessage(newMessage);
       setNewMessage('');
     }
   };
