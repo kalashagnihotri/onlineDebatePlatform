@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        .connecting { background: #fff3cd; color: #856404; }
+        .message {
+            background: white;
+            padding: 10px;
+            border-left: 4px solid #007bff;
+            margin: 5px 0;
+        }
+        input, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    
+    <div class="container">
+        <h3>Connection Settings</h3>
+        <label>WebSocket URL:</label>
+        <input type="text" id="wsUrl" value="ws://localhost:8000/ws/debate/1/" style="width: 300px;">
+        <br>
+        <label>JWT Token:</label>
+        <input type="text" id="token" placeholder="Enter JWT token here" style="width: 400px;">
+        <br>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="container">
+        <h3>Connection Status</h3>
+        <div id="status" class="status disconnected">Disconnected</div>
+    </div>
+
+    <div class="container">
+        <h3>Send Message</h3>
+        <input type="text" id="messageInput" placeholder="Enter message" style="width: 300px;">
+        <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+    </div>
+
+    <div class="container">
+        <h3>Messages Log</h3>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        const statusEl = document.getElementById('status');
+        const messagesEl = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function updateStatus(status, message) {
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = message;
+        }
+
+        function addMessage(type, message) {
+            const div = document.createElement('div');
+            div.className = 'message';
+            div.innerHTML = `<strong>[${new Date().toLocaleTimeString()}] ${type}:</strong> ${message}`;
+            messagesEl.appendChild(div);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            const token = document.getElementById('token').value;
+            
+            if (!token) {
+                alert('Please enter a JWT token');
+                return;
+            }
+
+            if (ws) {
+                ws.close();
+            }
+
+            const wsUrlWithToken = `${url}?token=${token}`;
+            
+            updateStatus('connecting', 'Connecting...');
+            addMessage('INFO', `Attempting to connect to: ${wsUrlWithToken}`);
+
+            ws = new WebSocket(wsUrlWithToken);
+
+            ws.onopen = function(event) {
+                updateStatus('connected', 'Connected');
+                addMessage('SUCCESS', 'WebSocket connection established');
+                sendBtn.disabled = false;
+            };
+
+            ws.onmessage = function(event) {
+                addMessage('RECEIVED', event.data);
+            };
+
+            ws.onclose = function(event) {
+                updateStatus('disconnected', `Disconnected (Code: ${event.code})`);
+                addMessage('INFO', `Connection closed. Code: ${event.code}, Reason: ${event.reason || 'No reason'}`);
+                sendBtn.disabled = true;
+            };
+
+            ws.onerror = function(error) {
+                addMessage('ERROR', 'WebSocket error occurred');
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || !ws || ws.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            const messageData = {
+                type: 'message',
+                message: message,
+                session_id: 1
+            };
+
+            ws.send(JSON.stringify(messageData));
+            addMessage('SENT', JSON.stringify(messageData));
+            messageInput.value = '';
+        }
+
+        function clearLog() {
+            messagesEl.innerHTML = '';
+        }
+
+        // Allow Enter key to send message
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

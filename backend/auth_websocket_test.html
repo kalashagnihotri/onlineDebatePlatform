@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Authentication Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .auth-section, .websocket-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        #messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background: white;
+        }
+        .sent {
+            border-left-color: #28a745;
+        }
+        .received {
+            border-left-color: #17a2b8;
+        }
+        .error-msg {
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Authentication Test</h1>
+        
+        <div class="auth-section">
+            <h3>1. Authentication</h3>
+            <input type="text" id="username" placeholder="Username" value="testuser">
+            <input type="password" id="password" placeholder="Password" value="testpass123">
+            <button onclick="login()">Login</button>
+            <button onclick="register()">Register</button>
+            <button onclick="logout()">Logout</button>
+            <div id="auth-status"></div>
+        </div>
+
+        <div class="websocket-section">
+            <h3>2. WebSocket Connection</h3>
+            <input type="text" id="debate-id" placeholder="Debate ID" value="1">
+            <button onclick="connectWebSocket()">Connect</button>
+            <button onclick="disconnectWebSocket()">Disconnect</button>
+            <div id="status" class="info">Not connected</div>
+        </div>
+
+        <div class="websocket-section">
+            <h3>3. Send Messages</h3>
+            <input type="text" id="message-input" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+            <button onclick="sendMessage()">Send Message</button>
+            <button onclick="sendTyping()">Send Typing</button>
+            <button onclick="sendReaction()">Send Reaction 👍</button>
+            <button onclick="clearMessages()">Clear</button>
+        </div>
+
+        <div class="websocket-section">
+            <h3>4. Messages</h3>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let token = null;
+        let isConnected = false;
+
+        // Authentication functions
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.access;
+                    updateAuthStatus(`Logged in as ${username}`, 'success');
+                    localStorage.setItem('token', token);
+                } else {
+                    updateAuthStatus(`Login failed: ${data.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                updateAuthStatus(`Login error: ${error.message}`, 'error');
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/auth/register/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        username, 
+                        password,
+                        email: `${username}@test.com`
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    updateAuthStatus(`User ${username} registered successfully`, 'success');
+                } else {
+                    updateAuthStatus(`Registration failed: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                updateAuthStatus(`Registration error: ${error.message}`, 'error');
+            }
+        }
+
+        function logout() {
+            token = null;
+            localStorage.removeItem('token');
+            updateAuthStatus('Logged out', 'info');
+            if (isConnected) {
+                disconnectWebSocket();
+            }
+        }
+
+        function updateAuthStatus(message, type) {
+            const statusEl = document.getElementById('auth-status');
+            statusEl.textContent = message;
+            statusEl.className = type;
+        }
+
+        // WebSocket functions
+        function connectWebSocket() {
+            if (!token) {
+                updateStatus('Please login first', 'error');
+                return;
+            }
+
+            const debateId = document.getElementById('debate-id').value;
+            const wsUrl = `ws://localhost:8000/ws/debates/${debateId}/?token=${token}`;
+            
+            updateStatus('Connecting...', 'info');
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function(event) {
+                isConnected = true;
+                updateStatus('Connected to WebSocket', 'success');
+                addMessage('Connected to debate room', 'info');
+            };
+            
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                addMessage(`Received: ${JSON.stringify(data, null, 2)}`, 'received');
+            };
+            
+            ws.onclose = function(event) {
+                isConnected = false;
+                updateStatus(`Connection closed (${event.code}: ${event.reason})`, 'error');
+                addMessage(`Connection closed: ${event.code} - ${event.reason}`, 'error-msg');
+            };
+            
+            ws.onerror = function(error) {
+                updateStatus('WebSocket error', 'error');
+                addMessage(`WebSocket error: ${error}`, 'error-msg');
+            };
+        }
+
+        function disconnectWebSocket() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            isConnected = false;
+            updateStatus('Disconnected', 'info');
+        }
+
+        function sendMessage() {
+            if (!isConnected || !ws) {
+                updateStatus('Not connected', 'error');
+                return;
+            }
+            
+            const messageInput = document.getElementById('message-input');
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                return;
+            }
+            
+            const data = {
+                type: 'chat_message',
+                message: message,
+                timestamp: new Date().toISOString()
+            };
+            
+            ws.send(JSON.stringify(data));
+            addMessage(`Sent: ${JSON.stringify(data, null, 2)}`, 'sent');
+            messageInput.value = '';
+        }
+
+        function sendTyping() {
+            if (!isConnected || !ws) {
+                updateStatus('Not connected', 'error');
+                return;
+            }
+            
+            const data = {
+                type: 'typing_indicator',
+                is_typing: true,
+                timestamp: new Date().toISOString()
+            };
+            
+            ws.send(JSON.stringify(data));
+            addMessage(`Sent typing indicator`, 'sent');
+        }
+
+        function sendReaction() {
+            if (!isConnected || !ws) {
+                updateStatus('Not connected', 'error');
+                return;
+            }
+            
+            const data = {
+                type: 'reaction',
+                emoji: '👍',
+                target_type: 'debate',
+                target_id: document.getElementById('debate-id').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            ws.send(JSON.stringify(data));
+            addMessage(`Sent reaction: ${data.emoji}`, 'sent');
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = type;
+        }
+
+        function addMessage(message, type) {
+            const messagesEl = document.getElementById('messages');
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${type}`;
+            messageEl.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            messagesEl.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        // Load token from localStorage on page load
+        window.onload = function() {
+            const savedToken = localStorage.getItem('token');
+            if (savedToken) {
+                token = savedToken;
+                updateAuthStatus('Token loaded from storage', 'success');
+            }
+        };
+    </script>
+</body>
+</html>

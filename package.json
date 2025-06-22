@@ -1,0 +1,28 @@
+{
+  "name": "online-debate-platform",
+  "version": "1.0.0",
+  "description": "A real-time online debate platform with live chat, participant tracking, and interactive features",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && python manage.py runserver",
+    "dev:frontend": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "test": "cd frontend && npm test",
+    "setup": "npm install && cd frontend && npm install && cd ../backend && pip install -r requirements.txt"
+  },
+  "keywords": [
+    "debate",
+    "real-time",
+    "websocket",
+    "django",
+    "react",
+    "chat"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {}
+}

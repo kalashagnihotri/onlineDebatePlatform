@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
   id: number;
@@ -31,19 +31,50 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Function to decode JWT token and extract user data
+  const decodeToken = (token: string): User | null => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return {
+        id: payload.user_id || 1,
+        username: payload.username || `user_${payload.user_id}`,
+        email: payload.email || 'user@example.com',
+        role: payload.role || 'student'
+      };
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  };
+
+  // Check for existing auth on app load
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      const userData = decodeToken(token);
+      if (userData) {
+        setUser(userData);
+        setIsAuthenticated(true);
+      } else {
+        // Invalid token, remove it
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
+    }
+    setIsLoading(false);
+  }, []);
 
   const login = (accessToken: string, refreshToken: string) => {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
     
-    // For now, we'll set a mock user. In a real app, you'd decode the JWT token
-    setUser({
-      id: 1,
-      username: 'user',
-      email: 'user@example.com',
-      role: 'student'
-    });
-    setIsAuthenticated(true);
+    const userData = decodeToken(accessToken);
+    if (userData) {
+      setUser(userData);
+      setIsAuthenticated(true);
+    }
   };
 
   const logout = () => {
@@ -60,9 +91,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout
   };
 
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-}; 
+};
