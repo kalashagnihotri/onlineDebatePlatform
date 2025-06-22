@@ -45,10 +45,25 @@ This is the Django REST API backend for the Online Debate Platform.
    python manage.py createsuperuser
    ```
 
-5. **Start the server**:
+5. **Start the HTTP server**:
    ```bash
-   python manage.py runserver
+   python manage.py runserver 8000
    ```
+
+6. **Start the WebSocket server** (in a new terminal):
+   ```bash
+   # Windows
+   daphne -p 8001 onlineDebatePlatform.asgi:application
+   
+   # Or use the batch file
+   ..\start-websocket.bat
+   ```
+
+**Server URLs:**
+- HTTP API: `http://127.0.0.1:8000/`
+- WebSocket: `ws://127.0.0.1:8001/`
+- API Documentation: `http://127.0.0.1:8000/swagger/`
+- Admin Interface: `http://127.0.0.1:8000/admin/`
 
 ## API Endpoints
 

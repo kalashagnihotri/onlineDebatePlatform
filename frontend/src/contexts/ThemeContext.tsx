@@ -5,6 +5,7 @@ type Theme = 'light' | 'dark' | 'system';
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  toggleTheme: () => void;
   isDark: boolean;
 }
 
@@ -58,9 +59,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     localStorage.setItem('theme', newTheme);
   };
 
+  const toggleTheme = () => {
+    if (theme === 'light') {
+      handleSetTheme('dark');
+    } else if (theme === 'dark') {
+      handleSetTheme('light');
+    } else {
+      // If system theme, toggle to light
+      handleSetTheme('light');
+    }
+  };
+
   const value = {
     theme,
     setTheme: handleSetTheme,
+    toggleTheme,
     isDark,
   };
 

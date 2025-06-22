@@ -235,6 +235,7 @@ const HomePage = () => {
           placeholder="Search debates by topic or description..."
           value={searchQuery}
           onChange={setSearchQuery}
+          onSearch={setSearchQuery}
           size="lg"
           className="w-full"
         />

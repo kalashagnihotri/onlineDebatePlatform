@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Participant List Test</title>
+    <script src="test-config.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .participant {
+            background: #f0f8ff;
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            border-left: 3px solid #4CAF50;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+        #messages {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Participant List Test</h1>
+    <p>This test will help verify that the participant list shows all connected users.</p>
+    
+    <div class="test-section">
+        <h3>Connection</h3>
+        <input type="text" id="token" placeholder="JWT Token" style="width: 400px;">
+        <input type="text" id="debateId" value="1" placeholder="Debate ID">
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <div id="status" class="status disconnected">Disconnected</div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Current Participants (<span id="participantCount">0</span>)</h3>
+        <div id="participants"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Messages</h3>
+        <div id="messages"></div>
+        <button onclick="clearMessages()">Clear Messages</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test Instructions</h3>
+        <ol>
+            <li>Get a JWT token by logging in through the main app</li>
+            <li>Paste the token above and click Connect</li>
+            <li>Open this page in multiple browser tabs/windows</li>
+            <li>Connect with the same or different tokens</li>
+            <li>Verify that all participants appear in the list</li>
+            <li>Disconnect from some tabs and verify participants are removed</li>
+        </ol>
+    </div>
+
+    <script>
+        let ws = null;
+        let participants = [];
+        
+        function connect() {
+            const token = document.getElementById('token').value.trim();
+            const debateId = document.getElementById('debateId').value || '1';
+            
+            if (!token) {
+                alert('Please enter a JWT token');
+                return;
+            }
+            
+            if (ws) {
+                ws.close();
+            }
+            
+            const wsUrl = `${CONFIG.WEBSOCKET_BASE_URL}/ws/debates/${debateId}/?token=${token}`;
+            addMessage(`🔌 Connecting to: ${wsUrl}`);
+            updateStatus('Connecting...', 'connecting');
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = function(event) {
+                updateStatus('Connected', 'connected');
+                addMessage('✅ WebSocket connected successfully');
+            };
+            
+            ws.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                } catch (e) {
+                    addMessage(`📩 Raw message: ${event.data}`);
+                }
+            };
+            
+            ws.onclose = function(event) {
+                updateStatus(`Disconnected (${event.code})`, 'disconnected');
+                addMessage(`❌ Connection closed: ${event.code} - ${event.reason || 'No reason'}`);
+                updateParticipants([]);
+            };
+            
+            ws.onerror = function(error) {
+                addMessage(`❌ WebSocket error: ${error}`);
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+        
+        function handleMessage(data) {
+            addMessage(`📩 ${data.type}: ${JSON.stringify(data, null, 2)}`);
+            
+            if (data.participants) {
+                updateParticipants(data.participants);
+            }
+            
+            if (data.type === 'connection_established') {
+                addMessage(`🎉 Connected! Found ${data.participants ? data.participants.length : 0} participants`);
+            } else if (data.type === 'user_joined') {
+                addMessage(`👋 ${data.username} joined the debate`);
+            } else if (data.type === 'user_left') {
+                addMessage(`👋 ${data.username} left the debate`);
+            }
+        }
+        
+        function updateParticipants(newParticipants) {
+            participants = newParticipants || [];
+            const participantsDiv = document.getElementById('participants');
+            const countSpan = document.getElementById('participantCount');
+            
+            countSpan.textContent = participants.length;
+            
+            if (participants.length === 0) {
+                participantsDiv.innerHTML = '<p style="color: #666;">No participants connected</p>';
+                return;
+            }
+            
+            participantsDiv.innerHTML = participants.map(p => `
+                <div class="participant">
+                    <strong>${p.username}</strong> (ID: ${p.id}) 
+                    <span style="color: ${p.is_online ? 'green' : 'red'};">
+                        ${p.is_online ? '🟢 Online' : '🔴 Offline'}
+                    </span>
+                </div>
+            `).join('');
+        }
+        
+        function updateStatus(message, className) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${className}`;
+        }
+        
+        function addMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const timestamp = new Date().toLocaleTimeString();
+            messagesDiv.innerHTML += `<div><strong>[${timestamp}]</strong> ${message}</div>`;
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

@@ -57,7 +57,11 @@
     <div class="container">
         <h3>Connection Settings</h3>
         <label>WebSocket URL:</label>
-        <input type="text" id="wsUrl" value="ws://localhost:8000/ws/debate/1/" style="width: 300px;">
+        <input type="text" id="wsUrl" value="" style="width: 300px;">
+        <script>
+            // Set default WebSocket URL based on current location or environment
+            document.getElementById('wsUrl').value = `ws://${window.location.hostname}:8001/ws/debates/1/`;
+        </script>
         <br>
         <label>JWT Token:</label>
         <input type="text" id="token" placeholder="Enter JWT token here" style="width: 400px;">

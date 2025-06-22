@@ -277,7 +277,7 @@ POST /debates/sessions/{session_id}/remove_participant/
 Connect to WebSocket endpoint for real-time messaging:
 
 ```
-ws://localhost:8000/ws/debate/{session_id}/
+ws://localhost:8001/ws/debates/{session_id}/
 ```
 
 **Message Format:**

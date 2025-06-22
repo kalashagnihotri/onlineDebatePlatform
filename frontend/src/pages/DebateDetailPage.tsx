@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getDebateSession } from '../services/debateService';
 import { useWebSocket, WebSocketMessage, TypingUser } from '../hooks/useWebSocket';
+import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { 
   PaperAirplaneIcon,
   UserCircleIcon,
@@ -79,22 +80,25 @@ const DebateDetailPage = () => {
       
       // Prevent duplicates by checking if message already exists
       if (message.type === 'message') {
-        const newMessage: Message = {
-          id: Date.now() + Math.random(), // Ensure unique ID
-          author: { 
-            id: message.user_id || 0, 
-            username: message.username || 'Unknown' 
-          },
-          content: message.message || '',
-          timestamp: message.timestamp || new Date().toISOString(),
-          likes: 0,
-          isLiked: false,
-          reactions: message.emoji_reactions || {},
-          imageUrl: message.image_url
-        };
-        
         setSession(prevSession => {
           if (!prevSession) return null;
+          
+          // Fallback to find the username from existing participants if not in message
+          const authorUsername = message.username || prevSession.participants?.find(p => p.id === message.user_id)?.username || 'Unknown';
+
+          const newMessage: Message = {
+            id: Date.now() + Math.random(), // Ensure unique ID
+            author: { 
+              id: message.user_id || 0, 
+              username: authorUsername
+            },
+            content: message.message || '',
+            timestamp: message.timestamp || new Date().toISOString(),
+            likes: 0,
+            isLiked: false,
+            reactions: message.emoji_reactions || {},
+            imageUrl: message.image_url
+          };
           
           // Check if message already exists to prevent duplicates
           const messageExists = prevSession.messages.some(
@@ -111,9 +115,18 @@ const DebateDetailPage = () => {
           };
         });
       }
+    },    onParticipantsUpdate: (newParticipants: User[]) => {
+      console.log('🔄 DebateDetailPage received participants update:', newParticipants);
+      setSession(prevSession => {
+        if (!prevSession) return null;
+        console.log('🔄 Updating session participants from', prevSession.participants?.length || 0, 'to', newParticipants.length);
+        return {
+          ...prevSession,
+          participants: newParticipants,
+          participant_count: newParticipants.length,
+        };
+      });
     },
-    onParticipantsUpdate: (newParticipants) => {
-      console.log('Participants updated:', newParticipants);    },
     onTyping: (users: TypingUser[]) => {
       console.log('Typing users:', users);
     }
@@ -197,12 +210,27 @@ const DebateDetailPage = () => {
     }
   };
 
-  const handleEmojiSelect = (emoji: string) => {
-    setNewMessage(prev => prev + emoji);
+  const handleEmojiSelect = (emoji: any) => {
+    setNewMessage(prev => prev + (emoji.emoji || emoji));
     setShowEmojiPicker(false);
   };
 
   const handleReaction = (messageId: number, emoji: string) => {
+    // Optimistic UI update
+    setSession(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        messages: prev.messages.map(msg => {
+          if (msg.id === messageId) {
+            const newReactions = { ...(msg.reactions || {}) };
+            newReactions[emoji] = (newReactions[emoji] || 0) + 1;
+            return { ...msg, reactions: newReactions };
+          }
+          return msg;
+        }),
+      };
+    });
     sendReaction(messageId, emoji);
   };
 
@@ -482,18 +510,14 @@ const DebateDetailPage = () => {
                     </button>
                     
                     {showEmojiPicker && (
-                      <div className="absolute bottom-full right-0 mb-2 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
-                        <div className="grid grid-cols-6 gap-2">
-                          {['😊', '😂', '👍', '❤️', '🎉', '🤔', '😮', '👏', '🔥', '💯', '😍', '🚀'].map(emoji => (
-                            <button
-                              key={emoji}
-                              onClick={() => handleEmojiSelect(emoji)}
-                              className="text-xl hover:bg-gray-100 dark:hover:bg-gray-700 rounded p-1"
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="absolute bottom-full right-0 mb-2 z-20">
+                        <EmojiPicker 
+                          onEmojiClick={handleEmojiSelect}
+                          width={350}
+                          height={450}
+                          searchDisabled
+                          previewConfig={{ showPreview: false }}
+                        />
                       </div>
                     )}
                   </div>
@@ -522,13 +546,16 @@ const DebateDetailPage = () => {
                 {isConnected ? 'Connected' : 'Connecting...'}
               </span>
             </div>
-          </Card>
-
-          {/* Participants */}
+          </Card>          {/* Participants */}
           <Card>
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
               Participants ({participants.length || 0})
             </h3>
+            {/* Debug Info */}
+            <div className="mb-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+              <div>WebSocket participants: {JSON.stringify(participants)}</div>
+              <div>Session participants: {JSON.stringify(session?.participants || [])}</div>
+            </div>
             <div className="space-y-3">
               {participants.map((participant) => (
                 <div key={participant.id} className="flex items-center gap-3">

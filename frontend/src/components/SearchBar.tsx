@@ -4,19 +4,23 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 interface SearchBarProps {
   placeholder?: string;
   onSearch: (query: string) => void;
+  onChange?: (value: string) => void;
   onClear?: () => void;
   className?: string;
   autoFocus?: boolean;
   value?: string;
+  size?: 'sm' | 'md' | 'lg';
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   placeholder = "Search...",
   onSearch,
+  onChange,
   onClear,
   className = '',
   autoFocus = false,
-  value: controlledValue
+  value: controlledValue,
+  size = 'md'
 }) => {
   const [value, setValue] = useState(controlledValue || '');
   const [isFocused, setIsFocused] = useState(false);
@@ -25,11 +29,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     const newValue = e.target.value;
     setValue(newValue);
     onSearch(newValue);
+    onChange?.(newValue);
   };
 
   const handleClear = () => {
     setValue('');
     onSearch('');
+    onChange?.('');
     onClear?.();
   };
 
@@ -37,6 +43,12 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     if (e.key === 'Enter') {
       onSearch(value);
     }
+  };
+
+  const sizeClasses = {
+    sm: 'py-1 text-sm',
+    md: 'py-2 text-sm',
+    lg: 'py-3 text-base'
   };
 
   return (
@@ -59,7 +71,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           autoFocus={autoFocus}
-          className="block w-full pl-10 pr-10 py-2 border-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-0 focus:outline-none sm:text-sm rounded-lg"
+          className={`block w-full pl-10 pr-10 border-0 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-0 focus:outline-none rounded-lg ${sizeClasses[size]}`}
         />
         
         {(controlledValue !== undefined ? controlledValue : value) && (

@@ -7,6 +7,11 @@ Tests if the WebSocket server is responding to connections.
 import socket
 import time
 import sys
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(dotenv_path='../.env')
 
 
 def test_tcp_connection(host, port):
@@ -116,16 +121,20 @@ def check_server_processes():
         
         if result.returncode == 0 and 'python.exe' in result.stdout:
             print("✅ Python processes found running")
-            
-            # Try to find processes listening on port 8000
+              # Try to find processes listening on configured ports
+            django_port = os.getenv('DJANGO_PORT', '8000')
+            daphne_port = os.getenv('DAPHNE_PORT', '8001')
             netstat_result = subprocess.run(['netstat', '-an'], 
                                           capture_output=True, text=True, shell=True)
             
-            if ':8000' in netstat_result.stdout:
-                print("✅ Service listening on port 8000")
+            if f':{django_port}' in netstat_result.stdout:
+                print(f"✅ Service listening on port {django_port}")
+                return True
+            elif f':{daphne_port}' in netstat_result.stdout:
+                print(f"✅ Service listening on port {daphne_port}")
                 return True
             else:
-                print("⚠️ No service found listening on port 8000")
+                print(f"⚠️ No service found listening on ports {django_port} or {daphne_port}")
                 return False
         else:
             print("❌ No Python processes found")
@@ -143,7 +152,7 @@ def main():
     else:
         host = "localhost"
         
-    port = int(sys.argv[2]) if len(sys.argv) > 2 else 8000
+    port = int(sys.argv[2]) if len(sys.argv) > 2 else int(os.getenv('DAPHNE_PORT', '8001'))
     debate_id = sys.argv[3] if len(sys.argv) > 3 else "1"
     
     websocket_path = f"/ws/debates/{debate_id}/"
@@ -167,8 +176,7 @@ def main():
             
             if test_websocket_handshake(host, port, websocket_path):
                 tests_passed += 1
-    
-    print("\n" + "=" * 50)
+      print("\n" + "=" * 50)
     print(f"📊 Results: {tests_passed}/{total_tests} tests passed")
     
     if tests_passed == total_tests:
@@ -180,11 +188,12 @@ def main():
         print("⚠️ Server is accessible but may not be configured for WebSockets.")
         print("Make sure you're running Daphne, not the Django development server.")
     else:
+        daphne_port = os.getenv('DAPHNE_PORT', '8001')
         print("❌ Server appears to be down or not accessible.")
         print("Make sure to start your Django server with Daphne:")
         print("  python manage.py runserver (for development)")
         print("  or")
-        print("  daphne -p 8000 onlineDebatePlatform.asgi:application")
+        print(f"  daphne -p {daphne_port} onlineDebatePlatform.asgi:application")
         
     print("\n💡 Troubleshooting tips:")
     print("  1. Ensure server is running: python manage.py runserver")

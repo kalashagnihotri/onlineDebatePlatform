@@ -76,12 +76,22 @@ onlineDebatePlatform/
    python manage.py migrate
    ```
 
-4. **Start the server**:
+4. **Start the HTTP server**:
    ```bash
-   python manage.py runserver
+   python manage.py runserver 8000
+   ```
+
+5. **Start the WebSocket server** (in a new terminal):
+   ```bash
+   # Windows
+   daphne -p 8001 onlineDebatePlatform.asgi:application
+   
+   # Or use the batch file
+   ..\start-websocket.bat
    ```
 
 The Django API will be available at `http://127.0.0.1:8000/`
+The WebSocket server will be available at `ws://127.0.0.1:8001/`
 - API Documentation: `http://127.0.0.1:8000/swagger/`
 - Admin Interface: `http://127.0.0.1:8000/admin/`
 

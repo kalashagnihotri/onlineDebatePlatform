@@ -1,8 +1,18 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / '.env')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+# Port configuration from environment variables
+DJANGO_PORT = int(os.getenv('DJANGO_PORT', 8000))
+DAPHNE_PORT = int(os.getenv('DAPHNE_PORT', 8001))
+FRONTEND_PORT = int(os.getenv('FRONTEND_PORT', 3000))
 
 
 # Quick-start development settings - unsuitable for production
@@ -176,7 +186,11 @@ SIMPLE_JWT = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True # For development only
+CORS_ALLOWED_ORIGINS = [
+    f"http://localhost:{FRONTEND_PORT}",
+    f"http://127.0.0.1:{FRONTEND_PORT}",
+]
+CORS_ALLOW_ALL_ORIGINS = False  # Use specific origins for better security
 
 # Swagger settings
 SWAGGER_SETTINGS = {

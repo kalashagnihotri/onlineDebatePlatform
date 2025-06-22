@@ -13,6 +13,11 @@ import threading
 import time
 import sys
 from urllib.parse import urlparse
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv(dotenv_path='../.env')
 
 
 class SimpleWebSocketClient:
@@ -402,7 +407,9 @@ def main():
     if len(sys.argv) > 1:
         base_url = sys.argv[1]
     else:
-        base_url = "ws://localhost:8000"
+        # Use environment variable or default
+        daphne_port = os.getenv('DAPHNE_PORT', '8001')
+        base_url = f"ws://localhost:{daphne_port}"
         
     debate_id = sys.argv[2] if len(sys.argv) > 2 else "1"
     url = f"{base_url}/ws/debates/{debate_id}/"

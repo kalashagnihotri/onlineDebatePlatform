@@ -104,11 +104,10 @@
 
     <script>
         let ws = null;
-        let isConnected = false;
-
-        function connect() {
+        let isConnected = false;        function connect() {
             const debateId = document.getElementById('debateId').value || '1';
-            const wsUrl = `ws://localhost:8000/ws/debates/${debateId}/`;
+            // Use dynamic port based on current location
+            const wsUrl = `ws://${window.location.hostname}:8001/ws/debates/${debateId}/`;
             
             updateStatus('Connecting...', 'connecting');
             

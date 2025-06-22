@@ -20,6 +20,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "axios": "^1.10.0",
+    "emoji-picker-react": "^4.12.2",
     "framer-motion": "^12.18.1",
     "lucide-react": "^0.522.0",
     "postcss-flexbugs-fixes": "^5.0.2",
@@ -34,7 +35,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "set PORT=3000 && react-scripts start",
+    "start:env": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

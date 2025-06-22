@@ -45,6 +45,11 @@ export const useWebSocket = ({
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  
+  // Add logging when participants change
+  useEffect(() => {
+    console.log('🔄 Participants state updated:', participants.length, 'participants:', participants.map(p => p.username));
+  }, [participants]);
   const [typingUsers, setTypingUsers] = useState<TypingUser[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const isConnectingRef = useRef(false);
@@ -65,19 +70,18 @@ export const useWebSocket = ({
       return;
     }
 
-    isConnectingRef.current = true;
-
-    const token = localStorage.getItem('accessToken');
+    isConnectingRef.current = true;    const token = localStorage.getItem('accessToken');
     if (!token) {
       console.error('❌ No access token found');
       isConnectingRef.current = false;
       return;
     }
 
-    console.log('🔌 Attempting WebSocket connection to:', `ws://localhost:8001/ws/debate/${sessionId}/?token=${token.substring(0, 20)}...`);
-    console.log('� Using token:', `${token.substring(0, 20)}...`);
+    const wsBaseUrl = process.env.REACT_APP_WEBSOCKET_BASE_URL || 'ws://127.0.0.1:8001';
+    console.log('🔌 Attempting WebSocket connection to:', `${wsBaseUrl}/ws/debates/${sessionId}/?token=${token.substring(0, 20)}...`);
+    console.log('🔑 Using token:', `${token.substring(0, 20)}...`);
     
-    const ws = new WebSocket(`ws://localhost:8001/ws/debate/${sessionId}/?token=${token}`);
+    const ws = new WebSocket(`${wsBaseUrl}/ws/debates/${sessionId}/?token=${token}`);
 
     ws.onopen = () => {
       console.log('✅ WebSocket connected successfully');
@@ -91,12 +95,28 @@ export const useWebSocket = ({
       try {
         const data: WebSocketMessage = JSON.parse(event.data);
         console.log('📨 WebSocket message received:', data.type, data);
-        setMessages(prev => [...prev, data]);
-        
-        // Handle different message types
-        if (data.type === 'user_joined' || data.type === 'user_left') {
-          console.log('👋 User joined:', data.username);
+        setMessages(prev => [...prev, data]);        // Handle different message types
+        if (data.type === 'connection_established') {
+          console.log('✅ Connection established, participants:', data.participants);
           if (data.participants) {
+            console.log('🔄 Setting participants from connection_established:', data.participants.length, 'participants');
+            console.log('🔄 Participant names:', data.participants.map(p => p.username));
+            setParticipants(data.participants);
+            onParticipantsUpdate?.(data.participants);
+          }
+        } else if (data.type === 'participant_list' || data.type === 'participant_update') {
+          console.log('📋 Received participant list/update:', data.participants);
+          if (data.participants) {
+            console.log('🔄 Setting participants from participant_list/update:', data.participants.length, 'participants');
+            console.log('🔄 Participant names:', data.participants.map(p => p.username));
+            setParticipants(data.participants);
+            onParticipantsUpdate?.(data.participants);
+          }
+        } else if (data.type === 'user_joined' || data.type === 'user_left') {
+          console.log('👋 User activity:', data.username, data.type, 'participants:', data.participants);
+          if (data.participants) {
+            console.log('🔄 Updating participants after user activity:', data.participants.length, 'participants');
+            console.log('🔄 Participant names:', data.participants.map(p => p.username));
             setParticipants(data.participants);
             onParticipantsUpdate?.(data.participants);
           }

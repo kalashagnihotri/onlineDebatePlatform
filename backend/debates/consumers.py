@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from .models import DebateSession
+from django.core.cache import cache
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -84,8 +85,8 @@ class DebateConsumer(AsyncWebsocketConsumer):
             'type': 'connection_established',
             'message': f'Connected to debate session {self.debate_id}',
             'user_id': user.id,
-            'username': user.username,
-            'participants': participants        }))
+            'username': user.username,            'participants': participants
+        }))
         
         # Notify others that user joined
         logger.info(f"Notifying room that {user.username} joined")
@@ -95,6 +96,15 @@ class DebateConsumer(AsyncWebsocketConsumer):
                 'type': 'user_joined',
                 'user_id': self.user.id,
                 'username': self.user.username,
+                'participants': participants
+            }
+        )
+        
+        # Send participant list update to all users (including self)
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'participant_update',
                 'participants': participants
             }
         )
@@ -108,12 +118,22 @@ class DebateConsumer(AsyncWebsocketConsumer):
             logger.info(f"User {self.user.username} disconnecting")
             await self.remove_participant()
             participants = await self.get_participants()
+            
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     'type': 'user_left',
                     'user_id': self.user.id,
                     'username': self.user.username,
+                    'participants': participants
+                }
+            )
+            
+            # Send participant list update to all remaining users
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'participant_update',
                     'participants': participants
                 }
             )
@@ -223,8 +243,7 @@ class DebateConsumer(AsyncWebsocketConsumer):
     async def typing_notification(self, event):
         # Don't send typing notification back to the sender
         if event['user_id'] != self.user.id:
-            await self.send(text_data=json.dumps({
-                'type': f"typing_{event['action']}",
+            await self.send(text_data=json.dumps({                'type': f"typing_{event['action']}",
                 'user_id': event['user_id'],
                 'username': event['username']
             }))
@@ -237,6 +256,13 @@ class DebateConsumer(AsyncWebsocketConsumer):
             'emoji': event['emoji'],
             'user_id': event['user_id'],
             'username': event['username']
+        }))
+
+    async def participant_update(self, event):
+        # Send participant list update
+        await self.send(text_data=json.dumps({
+            'type': 'participant_update',
+            'participants': event.get('participants', [])
         }))
 
     @database_sync_to_async
@@ -275,23 +301,46 @@ class DebateConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def add_participant(self):
-        # Add user to active participants (you might want to store this in Redis or database)
-        # For now, we'll use channel layer's group membership
-        pass
+        # Add user to active participants list in cache
+        cache_key = f'debate_participants_{self.debate_id}'
+        participants = cache.get(cache_key, [])
+        
+        # Check if user is not already in the list
+        user_data = {
+            'id': self.user.id,
+            'username': self.user.username,
+            'is_online': True
+        }
+        
+        # Remove existing entry if present (to avoid duplicates)
+        participants = [p for p in participants if p['id'] != self.user.id]
+        # Add current user
+        participants.append(user_data)
+          # Store back in cache (expire after 1 hour of inactivity)
+        cache.set(cache_key, participants, 3600)
+        logger.info(f"Added participant {self.user.username} to debate {self.debate_id}. Total: {len(participants)}")
 
     @database_sync_to_async
     def remove_participant(self):
-        # Remove user from active participants
-        pass
+        # Remove user from active participants list in cache
+        cache_key = f'debate_participants_{self.debate_id}'
+        participants = cache.get(cache_key, [])
+        
+        # Remove user from the list
+        participants = [p for p in participants if p['id'] != self.user.id]
+        
+        # Update cache
+        if participants:
+            cache.set(cache_key, participants, 3600)
+        else:
+            cache.delete(cache_key)
+        
+        logger.info(f"Removed participant {self.user.username} from debate {self.debate_id}. Remaining: {len(participants)}")
 
     @database_sync_to_async
     def get_participants(self):
-        # Get list of active participants
-        # For now, return a simple list - you can enhance this with actual participant tracking
-        return [
-            {
-                'id': self.user.id,
-                'username': self.user.username,
-                'is_online': True
-            }
-        ]
+        # Get list of active participants from cache
+        cache_key = f'debate_participants_{self.debate_id}'
+        participants = cache.get(cache_key, [])
+        logger.info(f"Retrieved {len(participants)} participants for debate {self.debate_id}: {[p['username'] for p in participants]}")
+        return participants
