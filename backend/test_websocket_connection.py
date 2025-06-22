@@ -176,7 +176,7 @@ def main():
             
             if test_websocket_handshake(host, port, websocket_path):
                 tests_passed += 1
-      print("\n" + "=" * 50)
+    print("\n" + "=" * 50)
     print(f"📊 Results: {tests_passed}/{total_tests} tests passed")
     
     if tests_passed == total_tests:

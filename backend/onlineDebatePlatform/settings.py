@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import socket
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -8,11 +9,25 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / '.env')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Function to get local IP address
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return '192.168.1.100'  # fallback IP
 
 # Port configuration from environment variables
 DJANGO_PORT = int(os.getenv('DJANGO_PORT', 8000))
 DAPHNE_PORT = int(os.getenv('DAPHNE_PORT', 8001))
 FRONTEND_PORT = int(os.getenv('FRONTEND_PORT', 3000))
+HOST = os.getenv('HOST', '0.0.0.0')
+
+# Get local IP for network access
+LOCAL_IP = get_local_ip()
 
 
 # Quick-start development settings - unsuitable for production
@@ -24,7 +39,7 @@ SECRET_KEY = 'django-insecure-temp-key-for-development'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', LOCAL_IP, '*']
 
 
 # Application definition
@@ -189,8 +204,15 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     f"http://localhost:{FRONTEND_PORT}",
     f"http://127.0.0.1:{FRONTEND_PORT}",
+    f"http://{LOCAL_IP}:{FRONTEND_PORT}",
 ]
-CORS_ALLOW_ALL_ORIGINS = False  # Use specific origins for better security
+
+# Allow all origins for development (you can restrict this for production)
+CORS_ALLOW_ALL_ORIGINS = True  # Set to True for development to allow network access
+
+# Additional CORS settings for network access
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_HEADERS = True
 
 # Swagger settings
 SWAGGER_SETTINGS = {

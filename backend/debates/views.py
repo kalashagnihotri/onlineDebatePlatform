@@ -7,6 +7,7 @@ from .models import DebateTopic, DebateSession, Message, Participation
 from .serializers import DebateTopicSerializer, DebateSessionSerializer, MessageSerializer
 from core.permissions import IsSessionModerator, CanPostMessage
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 
 User = get_user_model()
 
@@ -19,6 +20,16 @@ class DebateSessionViewSet(viewsets.ModelViewSet):
     queryset = DebateSession.objects.all()
     serializer_class = DebateSessionSerializer
     permission_classes = [IsAuthenticated]
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def participants(self, request, pk=None):
+        """Get current participants from cache (real-time WebSocket participants)."""
+        cache_key = f'debate_participants_{pk}'
+        participants = cache.get(cache_key, [])
+        return Response({
+            'participants': participants,
+            'count': len(participants)
+        })
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def join(self, request, pk=None):

@@ -76,22 +76,34 @@ onlineDebatePlatform/
    python manage.py migrate
    ```
 
-4. **Start the HTTP server**:
-   ```bash
-   python manage.py runserver 8000
-   ```
+4. **Start the servers** (recommended - use separate terminals):
 
-5. **Start the WebSocket server** (in a new terminal):
+   **Terminal 1 - HTTP API Server:**
    ```bash
-   # Windows
-   daphne -p 8001 onlineDebatePlatform.asgi:application
+   # For network access (default)
+   python manage.py startapi
    
-   # Or use the batch file
-   ..\start-websocket.bat
+   # For localhost only
+   python manage.py startapi --localhost
    ```
 
-The Django API will be available at `http://127.0.0.1:8000/`
-The WebSocket server will be available at `ws://127.0.0.1:8001/`
+   **Terminal 2 - WebSocket Server:**
+   ```bash
+   # For network access (default)
+   python manage.py startws
+   
+   # For localhost only  
+   python manage.py startws --localhost
+   ```
+
+   **Alternative - Helper command:**
+   ```bash
+   # Interactive helper to start one server at a time
+   python manage.py startdev
+   ```
+
+The Django API will be available at `http://0.0.0.0:8000/` (network) or `http://127.0.0.1:8000/` (localhost)
+The WebSocket server will be available at `ws://0.0.0.0:8001/` (network) or `ws://127.0.0.1:8001/` (localhost)
 - API Documentation: `http://127.0.0.1:8000/swagger/`
 - Admin Interface: `http://127.0.0.1:8000/admin/`
 

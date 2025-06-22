@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getDebateSession } from '../services/debateService';
+import { getDebateSession, postMessage, getSessionParticipants } from '../services/debateService';
 import { useWebSocket, WebSocketMessage, TypingUser } from '../hooks/useWebSocket';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { 
@@ -111,15 +111,13 @@ const DebateDetailPage = () => {
           
           return {
             ...prevSession,
-            messages: [...prevSession.messages, newMessage]
-          };
+            messages: [...prevSession.messages, newMessage]          };
         });
       }
-    },    onParticipantsUpdate: (newParticipants: User[]) => {
-      console.log('🔄 DebateDetailPage received participants update:', newParticipants);
+    },
+    onParticipantsUpdate: (newParticipants: User[]) => {
       setSession(prevSession => {
         if (!prevSession) return null;
-        console.log('🔄 Updating session participants from', prevSession.participants?.length || 0, 'to', newParticipants.length);
         return {
           ...prevSession,
           participants: newParticipants,
@@ -248,6 +246,28 @@ const DebateDetailPage = () => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+  // Only fetch participants initially from API when WebSocket isn't connected yet
+  useEffect(() => {
+    if (!id || isConnected) return;
+
+    const fetchParticipants = async () => {      try {
+        const response = await getSessionParticipants(id);
+        
+        setSession(prevSession => {
+          if (!prevSession) return null;
+          return {
+            ...prevSession,
+            participants: response.participants,
+            participant_count: response.participants.length,
+          };
+        });
+      } catch (error) {
+        console.error('Failed to fetch participants:', error);
+      }
+    };
+
+    fetchParticipants();
+  }, [id, isConnected]);
 
   if (loading) {
     return (
@@ -545,39 +565,33 @@ const DebateDetailPage = () => {
               <span className={`text-sm ${isConnected ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {isConnected ? 'Connected' : 'Connecting...'}
               </span>
-            </div>
-          </Card>          {/* Participants */}
+            </div>          </Card>
+          
+          {/* Participants */}
           <Card>
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">
-              Participants ({participants.length || 0})
+              Participants ({participants.length})
             </h3>
-            {/* Debug Info */}
-            <div className="mb-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-              <div>WebSocket participants: {JSON.stringify(participants)}</div>
-              <div>Session participants: {JSON.stringify(session?.participants || [])}</div>
-            </div>
             <div className="space-y-3">
-              {participants.map((participant) => (
-                <div key={participant.id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center">
-                    <UserCircleIcon className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{participant.username}</p>
-                    <div className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full ${participant.is_online ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {participant.is_online ? 'Online' : 'Offline'}
-                      </span>
+              {participants.length === 0 ? (
+                <NoParticipantsEmpty />
+              ) : (
+                participants.map((participant) => (
+                  <div key={participant.id} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center">
+                      <UserCircleIcon className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900 dark:text-white">
+                        {participant.username}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Online</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              
-              {participants.length === 0 && (
-                <div className="text-center py-4">
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">No participants yet</p>
-                </div>
+                ))
               )}
             </div>
           </Card>

@@ -35,8 +35,12 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "set PORT=3000 && react-scripts start",
+    "start": "node start-cross-platform.js",
+    "start:simple": "node start-simple.js",
+    "start:network": "node start-with-network.js",
+    "start:original": "set PORT=3000 && react-scripts start",
     "start:env": "react-scripts start",
+    "start:network": "node start-dev.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

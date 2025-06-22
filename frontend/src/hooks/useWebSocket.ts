@@ -68,16 +68,31 @@ export const useWebSocket = ({
     if (isConnectingRef.current) {
       console.log('🚫 Connection attempt already in progress');
       return;
-    }
-
-    isConnectingRef.current = true;    const token = localStorage.getItem('accessToken');
+    }    isConnectingRef.current = true;
+    
+    const token = localStorage.getItem('accessToken');
     if (!token) {
       console.error('❌ No access token found');
       isConnectingRef.current = false;
       return;
     }
 
-    const wsBaseUrl = process.env.REACT_APP_WEBSOCKET_BASE_URL || 'ws://127.0.0.1:8001';
+    // Function to get the appropriate WebSocket URL
+    const getWebSocketUrl = (): string => {
+      const isNetworkMode = process.env.REACT_APP_NETWORK_MODE === 'true';
+      
+      if (isNetworkMode || !process.env.REACT_APP_WEBSOCKET_BASE_URL) {
+        // Use current host with the Daphne port
+        const port = process.env.REACT_APP_DAPHNE_PORT || '8001';
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${window.location.hostname}:${port}`;
+      }
+      
+      // Use the configured WebSocket URL for localhost development
+      return process.env.REACT_APP_WEBSOCKET_BASE_URL || 'ws://127.0.0.1:8001';
+    };
+
+    const wsBaseUrl = getWebSocketUrl();
     console.log('🔌 Attempting WebSocket connection to:', `${wsBaseUrl}/ws/debates/${sessionId}/?token=${token.substring(0, 20)}...`);
     console.log('🔑 Using token:', `${token.substring(0, 20)}...`);
     

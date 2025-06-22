@@ -313,10 +313,10 @@ class DebateConsumer(AsyncWebsocketConsumer):
         }
         
         # Remove existing entry if present (to avoid duplicates)
-        participants = [p for p in participants if p['id'] != self.user.id]
-        # Add current user
+        participants = [p for p in participants if p['id'] != self.user.id]        # Add current user
         participants.append(user_data)
-          # Store back in cache (expire after 1 hour of inactivity)
+        
+        # Store back in cache (expire after 1 hour of inactivity)
         cache.set(cache_key, participants, 3600)
         logger.info(f"Added participant {self.user.username} to debate {self.debate_id}. Total: {len(participants)}")
 
@@ -343,4 +343,15 @@ class DebateConsumer(AsyncWebsocketConsumer):
         cache_key = f'debate_participants_{self.debate_id}'
         participants = cache.get(cache_key, [])
         logger.info(f"Retrieved {len(participants)} participants for debate {self.debate_id}: {[p['username'] for p in participants]}")
+        return participants
+
+    @database_sync_to_async
+    def cleanup_participants(self):
+        """Clean up stale participant entries (optional periodic cleanup)"""
+        cache_key = f'debate_participants_{self.debate_id}'
+        participants = cache.get(cache_key, [])
+        
+        # For now, just return the current list
+        # In the future, we could add logic to check for stale connections
+        logger.info(f"Participant cleanup for debate {self.debate_id}: {len(participants)} active")
         return participants
