@@ -1,6 +1,13 @@
 from rest_framework.permissions import BasePermission
 from debates.models import Participation
 
+class IsModerator(BasePermission):
+    """
+    Allows access only to users with moderator role.
+    """
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.role == 'moderator'
+
 class IsSessionModerator(BasePermission):
     """
     Allows access only to the moderator of the session.
@@ -21,4 +28,4 @@ class CanPostMessage(BasePermission):
             participation = Participation.objects.get(session_id=session_pk, user=request.user)
             return not participation.is_muted
         except Participation.DoesNotExist:
-            return False 
+            return False

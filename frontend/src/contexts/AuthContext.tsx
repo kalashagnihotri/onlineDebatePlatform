@@ -10,7 +10,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (accessToken: string, refreshToken: string) => void;
+  login: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -38,9 +38,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       return {
-        id: payload.user_id || 1,
-        username: payload.username || `user_${payload.user_id}`,
-        email: payload.email || 'user@example.com',
+        id: payload.user_id,
+        username: payload.username || `User${payload.user_id}`,
+        email: payload.email || '',
         role: payload.role || 'student'
       };
     } catch (error) {
@@ -49,24 +49,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Check for existing auth on app load
-  useEffect(() => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      const userData = decodeToken(token);
-      if (userData) {
-        setUser(userData);
-        setIsAuthenticated(true);
-      } else {
-        // Invalid token, remove it
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-      }
-    }
-    setIsLoading(false);
-  }, []);
-
-  const login = (accessToken: string, refreshToken: string) => {
+  const login = async (accessToken: string, refreshToken: string) => {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
     
@@ -83,6 +66,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
     setIsAuthenticated(false);
   };
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      const userData = decodeToken(token);
+      if (userData) {
+        setUser(userData);
+        setIsAuthenticated(true);
+      } else {
+        // Invalid token, remove it
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+      }
+    }
+    setIsLoading(false);
+  }, []);
 
   const value = {
     user,

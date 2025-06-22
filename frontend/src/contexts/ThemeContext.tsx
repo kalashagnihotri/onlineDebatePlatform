@@ -53,13 +53,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       return () => mediaQuery.removeEventListener('change', updateDarkMode);
     }
   }, [theme]);
-
   const handleSetTheme = (newTheme: Theme) => {
+    console.log('Setting theme to:', newTheme);
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
   };
-
   const toggleTheme = () => {
+    console.log('Theme toggle clicked, current theme:', theme);
     if (theme === 'light') {
       handleSetTheme('dark');
     } else if (theme === 'dark') {

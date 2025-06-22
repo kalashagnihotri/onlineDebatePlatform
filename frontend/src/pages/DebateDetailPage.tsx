@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getDebateSession, postMessage, getSessionParticipants } from '../services/debateService';
+import { getDebateSession, getSessionParticipants, getSessionMessages } from '../services/debateService';
 import { useWebSocket, WebSocketMessage, TypingUser } from '../hooks/useWebSocket';
-import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import EmojiPicker from 'emoji-picker-react';
 import { 
   PaperAirplaneIcon,
   UserCircleIcon,
@@ -129,14 +129,23 @@ const DebateDetailPage = () => {
       console.log('Typing users:', users);
     }
   });
-
   useEffect(() => {
     if (id) {
       const fetchSession = async () => {
         try {
           setLoading(true);
-          const data = await getDebateSession(id);
-          setSession(data);
+          const [sessionData, messagesData] = await Promise.all([
+            getDebateSession(id),
+            getSessionMessages(id)
+          ]);
+          
+          // Merge session data with message history
+          const sessionWithMessages = {
+            ...sessionData,
+            messages: messagesData || sessionData.messages || []
+          };
+          
+          setSession(sessionWithMessages);
         } catch (error) {
           console.error("Failed to fetch session", error);
           toast.error('Failed to load debate session');

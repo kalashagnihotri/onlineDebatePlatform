@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import DebateTopic, DebateSession, Message, Participation
 from .serializers import DebateTopicSerializer, DebateSessionSerializer, MessageSerializer
-from core.permissions import IsSessionModerator, CanPostMessage
+from core.permissions import IsSessionModerator, CanPostMessage, IsModerator
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 
@@ -14,12 +14,34 @@ User = get_user_model()
 class DebateTopicViewSet(viewsets.ModelViewSet):
     queryset = DebateTopic.objects.all()
     serializer_class = DebateTopicSerializer
-    permission_classes = [IsAuthenticated] # Or IsAdminUser for topic management
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAuthenticated, IsModerator]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
 class DebateSessionViewSet(viewsets.ModelViewSet):
     queryset = DebateSession.objects.all()
     serializer_class = DebateSessionSerializer
-    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        """
+        Instantiates and returns the list of permissions that this view requires.
+        """
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            permission_classes = [IsAuthenticated, IsModerator]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+    
+    def perform_create(self, serializer):
+        """Set the moderator as the current user when creating a session"""
+        serializer.save(moderator=self.request.user)
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def participants(self, request, pk=None):
@@ -74,8 +96,17 @@ class DebateSessionViewSet(viewsets.ModelViewSet):
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
-    permission_classes = [IsAuthenticated, CanPostMessage]
     http_method_names = ['get', 'post', 'head', 'options']
+
+    def get_permissions(self):
+        """
+        Allow reading messages for authenticated users, but posting requires participation.
+        """
+        if self.action in ['create']:
+            permission_classes = [IsAuthenticated, CanPostMessage]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
 
     def get_queryset(self):
         # Filter messages by the session specified in the query parameter

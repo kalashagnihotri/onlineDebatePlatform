@@ -10,7 +10,8 @@ import {
   ChatBubbleLeftRightIcon,
   UserCircleIcon,
   ArrowRightOnRectangleIcon,
-  HomeIcon
+  HomeIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,10 +22,10 @@ const Navbar = () => {
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
-
   const navItems = [
     { path: '/', label: 'Home', icon: HomeIcon },
     { path: '/debates', label: 'Debates', icon: ChatBubbleLeftRightIcon },
+    ...(user?.role === 'moderator' ? [{ path: '/moderator', label: 'Dashboard', icon: ShieldCheckIcon }] : []),
   ];
 
   return (

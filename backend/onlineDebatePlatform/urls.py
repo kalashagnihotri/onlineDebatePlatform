@@ -4,9 +4,9 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
 )
+from users.jwt_views import CustomTokenObtainPairView
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -32,10 +32,8 @@ urlpatterns = [
     # API v1
     path('api/v1/', include([
         path('users/', include('users.urls')),
-        path('debates/', include('debates.urls')),
-
-        # JWT Auth
-        path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+        path('debates/', include('debates.urls')),        # JWT Auth
+        path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
         path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     ])),
 ]

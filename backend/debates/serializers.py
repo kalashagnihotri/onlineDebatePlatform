@@ -23,10 +23,11 @@ class ParticipationSerializer(serializers.ModelSerializer):
 
 class DebateSessionSerializer(serializers.ModelSerializer):
     topic = DebateTopicSerializer(read_only=True)
+    topic_id = serializers.IntegerField(write_only=True)
     moderator = UserSerializer(read_only=True)
     participants = ParticipationSerializer(source='participation_set', many=True, read_only=True)
     messages = MessageSerializer(many=True, read_only=True)
 
     class Meta:
         model = DebateSession
-        fields = ['id', 'topic', 'moderator', 'start_time', 'end_time', 'participants', 'messages']
+        fields = ['id', 'topic', 'topic_id', 'moderator', 'start_time', 'end_time', 'participants', 'messages']
